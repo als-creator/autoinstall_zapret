@@ -1,33 +1,26 @@
 #!/bin/bash
 set -e
 
-log_ok() { echo "[OK] $1"; }
-log_error() { echo "[ERROR] $1"; exit 1; }
+log_ok(){ echo "[OK] $1"; }
+log_err(){ echo "[ERROR] $1"; exit 1; }
 
-# Проверка sudo
-if ! command -v sudo >/dev/null 2>&1; then
-  echo "[ERROR] sudo не установлен"
-  echo "su -"
-  echo "control sudowheel enabled"
-  echo "reboot"
-  exit 1
-fi
-
-WORK_DIR="/opt/zapret"
-TEMP_DIR=$(mktemp -d)
+command -v sudo >/dev/null 2>&1 || { echo "[ERROR] sudo не установлен"; echo "su -"; exit 1; }
 
 log_ok "Скачивание zapret"
-git clone https://github.com/als-creator/autoinstall_zapret_altlinux.git "$TEMP_DIR" || log_error "git clone"
+TMPDIR=$(mktemp -d)
+git clone https://github.com/als-creator/autoinstall_zapret_altlinux.git "$TMPDIR" || log_err "git clone"
 
-sudo rm -rf "$WORK_DIR"
-sudo cp -a "$TEMP_DIR/zapret" "$WORK_DIR"
+sudo rm -rf /opt/zapret
+sudo cp -a "$TMPDIR/zapret" /opt/zapret
+rm -rf "$TMPDIR"
 
-log_ok "libnetfilter_queue"
-sudo epm install libnetfilter_queue || true
+log_ok "Установка libnetfilter_queue (если доступно)"
+sudo apt-get update >/dev/null 2>&1 || true
+sudo apt-get install -y libnetfilter-queue || true
 
-sudo systemctl stop zapret 2>/dev/null || true
+sudo systemctl stop zapret.service 2>/dev/null || true
 
-sudo tee /etc/systemd/system/zapret.service > /dev/null << 'EOF'
+sudo tee /etc/systemd/system/zapret.service > /dev/null <<'EOF'
 [Unit]
 Description=Zapret DPI bypass
 After=network.target
@@ -46,16 +39,8 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable zapret
-sudo systemctl start zapret
-
-echo "[OK] Установлен: $WORK_DIR"
-echo "[OK] Config: $WORK_DIR/config"
-echo "[OK] Domains: $WORK_DIR/ipset/zapret-hosts-user.txt"
-echo "[OK] Docs: https://github.com/bol-van/zapret"
-
-sudo systemctl status zapret.service --no-pager
-
-rm -rf "$TEMP_DIR"
+sudo systemctl enable --now zapret.service
+sudo systemctl restart zapret.service
+sudo systemctl --no-pager status zapret.service || true
 
 exit 0
