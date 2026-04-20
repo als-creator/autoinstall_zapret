@@ -1,44 +1,41 @@
 #!/bin/bash
 set -e
 
-# autoinstall_zapret_altlinux.sh
-# Установка zapret для AltLinux
+log_ok() { echo "[OK] $1"; }
+log_error() { echo "[ERROR] $1"; exit 1; }
 
-RED='\033[0;31m' GREEN='\033[0;32m' YELLOW='\033[1;33m' NC='\033[0m'
+# Проверка sudo
+if ! command -v sudo >/dev/null 2>&1; then
+  cat << EOF
+[ERROR] sudo не установлен/недоступен
 
-log() { echo -e "${GREEN}[OK]${NC} $1"; }
-error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
-warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-
-# Проверка прав root
-if [ "$EUID" -ne 0 ]; then
-  cat << 'EOF'
-
-🔥 autoinstall_zapret_altlinux
-
-Запуск:
-  curl -fsSL https://raw.githubusercontent.com/als-creator/autoinstall_zapret_altlinux/main/autoinstall_zapret_altlinux.sh -o autoinstall.sh
-  su -c 'bash autoinstall.sh'
-
+Для активации sudo:
+1. su -
+2. control sudowheel enabled
+3. reboot
+4. Запустите скрипт снова
 EOF
   exit 1
 fi
 
 WORK_DIR="/opt/zapret"
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+SCRIPT_DIR="\$(dirname "\$(readlink -f "\$0")")"
+TEMP_DIR="\$(mktemp -d)"
 
-log "Установка libnetfilter_queue (для nfqws)"
-epm install libnetfilter_queue || warn "Пакет не найден (tpws работает без него)"
+# Скачивание zapret во временную папку
+log_ok "Скачивание zapret"
+git clone https://github.com/als-creator/autoinstall_zapret_altlinux.git "\$TEMP_DIR" || log_error "Ошибка git clone"
 
-log "Остановка существующего zapret"
-systemctl stop zapret 2>/dev/null || true
+sudo rm -rf "\$WORK_DIR"
+sudo cp -a "\$TEMP_DIR/zapret" "\$WORK_DIR"
 
-log "Копирование $SCRIPT_DIR/zapret → $WORK_DIR"
-rm -rf "$WORK_DIR"
-cp -a "$SCRIPT_DIR/zapret" "$WORK_DIR"
+log_ok "Установка libnetfilter_queue"
+sudo epm install libnetfilter_queue || true
+
+sudo systemctl stop zapret 2>/dev/null || true
 
 # Systemd unit
-cat > /etc/systemd/system/zapret.service << 'EOF'
+sudo tee /etc/systemd/system/zapret.service > /dev/null << 'EOF'
 [Unit]
 Description=Zapret DPI bypass
 After=network.target
@@ -56,23 +53,18 @@ KillMode=mixed
 WantedBy=multi-user.target
 EOF
 
-log "Настройка systemd сервиса"
-systemctl daemon-reload
-systemctl enable zapret
-systemctl start zapret
+sudo systemctl daemon-reload
+sudo systemctl enable zapret
+sudo systemctl start zapret
 
-cat << EOF
+log_ok "Установлен: \$WORK_DIR"
+log_ok "Config: \$WORK_DIR/config"
+log_ok "Domains: \$WORK_DIR/ipset/zapret-hosts-user.txt"
+log_ok "Docs: https://github.com/bol-van/zapret"
 
-✅ ${GREEN}zapret УСТАНОВЛЕН${NC}
+sudo systemctl status zapret.service --no-pager
 
-📁 Путь: $WORK_DIR
-⚙️  Config: $WORK_DIR/config
-📋 Domains: $WORK_DIR/ipset/zapret-hosts-user.txt
-📚 Документация: https://github.com/bol-van/zapret
-
-log "Статус:"
-EOF
-
-systemctl status zapret.service --no-pager
+# Очистка
+rm -rf "\$TEMP_DIR"
 
 exit 0
