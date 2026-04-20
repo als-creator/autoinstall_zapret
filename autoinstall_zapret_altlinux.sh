@@ -6,35 +6,27 @@ log_error() { echo "[ERROR] $1"; exit 1; }
 
 # Проверка sudo
 if ! command -v sudo >/dev/null 2>&1; then
-  cat << EOF
-[ERROR] sudo не установлен/недоступен
-
-Для активации sudo:
-1. su -
-2. control sudowheel enabled
-3. reboot
-4. Запустите скрипт снова
-EOF
+  echo "[ERROR] sudo не установлен"
+  echo "su -"
+  echo "control sudowheel enabled"
+  echo "reboot"
   exit 1
 fi
 
 WORK_DIR="/opt/zapret"
-SCRIPT_DIR="\$(dirname "\$(readlink -f "\$0")")"
-TEMP_DIR="\$(mktemp -d)"
+TEMP_DIR=$(mktemp -d)
 
-# Скачивание zapret во временную папку
 log_ok "Скачивание zapret"
-git clone https://github.com/als-creator/autoinstall_zapret_altlinux.git "\$TEMP_DIR" || log_error "Ошибка git clone"
+git clone https://github.com/als-creator/autoinstall_zapret_altlinux.git "$TEMP_DIR" || log_error "git clone"
 
-sudo rm -rf "\$WORK_DIR"
-sudo cp -a "\$TEMP_DIR/zapret" "\$WORK_DIR"
+sudo rm -rf "$WORK_DIR"
+sudo cp -a "$TEMP_DIR/zapret" "$WORK_DIR"
 
-log_ok "Установка libnetfilter_queue"
+log_ok "libnetfilter_queue"
 sudo epm install libnetfilter_queue || true
 
 sudo systemctl stop zapret 2>/dev/null || true
 
-# Systemd unit
 sudo tee /etc/systemd/system/zapret.service > /dev/null << 'EOF'
 [Unit]
 Description=Zapret DPI bypass
@@ -57,14 +49,13 @@ sudo systemctl daemon-reload
 sudo systemctl enable zapret
 sudo systemctl start zapret
 
-log_ok "Установлен: \$WORK_DIR"
-log_ok "Config: \$WORK_DIR/config"
-log_ok "Domains: \$WORK_DIR/ipset/zapret-hosts-user.txt"
-log_ok "Docs: https://github.com/bol-van/zapret"
+echo "[OK] Установлен: $WORK_DIR"
+echo "[OK] Config: $WORK_DIR/config"
+echo "[OK] Domains: $WORK_DIR/ipset/zapret-hosts-user.txt"
+echo "[OK] Docs: https://github.com/bol-van/zapret"
 
 sudo systemctl status zapret.service --no-pager
 
-# Очистка
-rm -rf "\$TEMP_DIR"
+rm -rf "$TEMP_DIR"
 
 exit 0
