@@ -14,9 +14,9 @@ sudo rm -rf /opt/zapret
 sudo cp -a "$TMPDIR/zapret" /opt/zapret
 rm -rf "$TMPDIR"
 
-log_ok "Установка libnetfilter_queue (если доступно)"
+log_ok "Установка libnetfilter_queue"
 sudo apt-get update >/dev/null 2>&1 || true
-sudo apt-get install -y libnetfilter-queue || true
+sudo apt-get install -y libnetfilter_queue || true
 
 sudo systemctl stop zapret.service 2>/dev/null || true
 
