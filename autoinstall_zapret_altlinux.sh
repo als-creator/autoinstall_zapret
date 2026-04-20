@@ -1,57 +1,75 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-log_ok(){ echo "[OK] $1"; }
-log_err(){ echo "[ERROR] $1"; exit 1; }
+TMPDIR="$(mktemp -d)"
+REPO="https://github.com/bol-van/zapret.git"
+TARGET="/opt/zapret"
 
-command -v sudo >/dev/null 2>&1 || { echo "[ERROR] sudo не установлен"; echo "su -"; exit 1; }
+command -v sudo >/dev/null 2>&1 || { echo "[ERROR] sudo не установлен"; exit 1; }
 
-log_ok "Скачивание zapret"
-TMPDIR=$(mktemp -d)
-git clone https://github.com/als-creator/autoinstall_zapret_altlinux.git "$TMPDIR" || log_err "git clone failed"
+echo "[OK] clone"
+git clone --depth 1 "$REPO" "$TMPDIR"
 
-sudo rm -rf /opt/zapret
-sudo cp -a "$TMPDIR/zapret" /opt/zapret
-rm -rf "$TMPDIR"
-log_ok "/opt/zapret установлен"
+echo "[OK] copy"
+sudo rm -rf "$TARGET"
+sudo cp -a "$TMPDIR" "$TARGET"
+# если репо вложено как /tmp/zapret/zapret при клоне чужого репозитория, учтём оба варианта
+if [ -d "$TMPDIR/zapret" ] && [ ! -d "$TARGET/init.d" ]; then
+  sudo rm -rf "$TARGET"
+  sudo cp -a "$TMPDIR/zapret" "$TARGET"
+fi
 
-log_ok "Установка libnetfilter_queue"
-sudo apt-get update >/dev/null 2>&1 || true
-sudo apt-get install -y libnetfilter-queue libnetfilter-queue-dev libnetfilter-queue1 >/dev/null 2>&1 || true
+# восстановим права, как делает install_easy.sh
+sudo find "$TARGET" -type d -exec chmod 755 {} \; || true
+sudo find "$TARGET" -type f -exec chmod 644 {} \; || true
+# сохранить исполняемые файлы (в репо они уже исполн.); установим +x для bin и init scripts
+sudo find "$TARGET" -path "$TARGET/binaries/*" -type f -exec chmod 755 {} \; || true
+sudo find "$TARGET/init.d" -type f -exec chmod 755 {} \; || true
 
-# Создаём wrapper запуска, если нет
-sudo mkdir -p /opt/zapret/init.d
-sudo tee /opt/zapret/init.d/zapret-start > /dev/null <<'EOF'
+# Попытка установить пакеты (не критично)
+if command -v apt-get >/dev/null 2>&1; then
+  echo "[OK] apt-get update && install libnetfilter_queue"
+  sudo apt-get update >/dev/null 2>&1 || true
+  sudo apt-get install -y libnetfilter-queue libnetfilter-queue1 libnetfilter-queue-dev >/dev/null 2>&1 || true
+fi
+
+# Создадим минимальный wrapper
+sudo mkdir -p "$TARGET/init.d"
+sudo tee "$TARGET/init.d/zapret-start" > /dev/null <<'EOF'
 #!/usr/bin/env bash
 set -e
 cd /opt/zapret
 
-# Попытки найти рабочий исполняемый файл в репо
+# Official repo ships binaries/tpws, nfqws etc. Try typical entry points in order:
 if [ -x ./binaries/zapret ]; then
   exec ./binaries/zapret
 fi
-
 if [ -x ./zapret ]; then
   exec ./zapret
 fi
-
 if [ -x ./start.sh ]; then
   exec ./start.sh
 fi
-
 if [ -x ./install_easy.sh ]; then
-  # Some repos use install scripts; try non-interactive run if supported
+  # install_easy.sh can re-exec itself from target; try non-interactive run if supported
   exec ./install_easy.sh --run || exec ./install_easy.sh
 fi
 
-echo "нет исполняемого файла в /opt/zapret" >&2
+echo "Нет исполняемого файла в /opt/zapret" >&2
 exit 1
 EOF
-sudo chmod +x /opt/zapret/init.d/zapret-start
-log_ok "Wrapper /opt/zapret/init.d/zapret-start создан"
+sudo chmod 755 "$TARGET/init.d/zapret-start"
 
-# Создаём systemd unit
-sudo tee /etc/systemd/system/zapret.service > /dev/null <<'EOF'
+# Install systemd unit(s) from the repo if present
+SYSTEMD_DIR="/etc/systemd/system"
+if [ -d "$TARGET/init.d/systemd" ]; then
+  echo "[OK] installing systemd units from repo"
+  sudo cp -f "$TARGET/init.d/systemd/"*.service "$SYSTEMD_DIR/" 2>/dev/null || true
+  # also copy timer/service for list updates if present
+  sudo cp -f "$TARGET/init.d/systemd/"*.timer "$SYSTEMD_DIR/" 2>/dev/null || true
+else
+  echo "[OK] writing minimal zapret.service"
+  sudo tee /etc/systemd/system/zapret.service > /dev/null <<'UNIT'
 [Unit]
 Description=Zapret DPI bypass
 After=network.target
@@ -67,18 +85,25 @@ KillMode=mixed
 
 [Install]
 WantedBy=multi-user.target
-EOF
-log_ok "Unit /etc/systemd/system/zapret.service записан"
+UNIT
+fi
 
-# Перезагрузить daemon, включить и запустить сервис
+# daemon-reload and enable/start services
 sudo systemctl daemon-reload
 sudo systemctl enable zapret.service >/dev/null 2>&1 || true
 sudo systemctl restart zapret.service || true
 
-log_ok "Статус сервиса:"
-sudo systemctl --no-pager status zapret.service || true
+# If repo provided zapret-list-update.timer/service, enable+start them
+if [ -f "$SYSTEMD_DIR/zapret-list-update.timer" ] || [ -f "$SYSTEMD_DIR/zapret-list-update.service" ]; then
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now zapret-list-update.timer zapret-list-update.service >/dev/null 2>&1 || true
+fi
 
-log_ok "Последние журналы (200 строк):"
+echo "[OK] status:"
+sudo systemctl --no-pager status zapret.service || true
+echo "[OK] journal (last 200 lines):"
 sudo journalctl -u zapret.service -n 200 --no-pager || true
 
+# cleanup
+rm -rf "$TMPDIR"
 exit 0
