@@ -23,21 +23,35 @@ sudo apt-get install -y libnetfilter_queue git sudo >/dev/null 2>&1 || {
 
 sudo tee /etc/systemd/system/zapret.service > /dev/null <<'EOF'
 [Unit]
+# Запускать после подключения к сети
 After=network-online.target
+# Мягкая зависимость — попытаться запустить сеть, но не требовать её
 Wants=network-online.target
 
 [Service]
+# Тип сервиса — process создаёт дочерние процессы и сервис остаётся активным
 Type=forking
-Restart=no
+# Перезапускать сервис при ошибке (ненулевой выход)
+Restart=on-failure
+# Ждать 10 секунд перед перезапуском
+RestartSec=10s
+# Максимум 3 перезапуска за 60 секунд (защита от бесконечных перезапусков)
+StartLimitInterval=60s
+# Количество разрешённых перезапусков в интервале
+StartLimitBurst=3
+# Таймаут на запуск и остановку сервиса
 TimeoutSec=30sec
-IgnoreSIGPIPE=no
-KillMode=none
+# Убивать только основной процесс, не дочерние
+KillMode=process
+# Не пытаться автоматически определять PID основного процесса
 GuessMainPID=no
-RemainAfterExit=no
+# Команда для запуска сервиса
 ExecStart=/opt/zapret/init.d/sysv/zapret start
+# Команда для остановки сервиса
 ExecStop=/opt/zapret/init.d/sysv/zapret stop
 
 [Install]
+# Включить сервис при загрузке системы в режиме multi-user (обычный режим)
 WantedBy=multi-user.target
 
 EOF
