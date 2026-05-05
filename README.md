@@ -97,22 +97,43 @@ sudo systemctl restart zapret.service
 
 ## Удаление zapret
 
-Если zapret больше не требуется, выполните следующие команды:  
+Если zapret больше не требуется, выполните следующие команды:
 
-Отключение автозагрузки:  
-sudo systemctl disable --now zapret.service  
+```bash
+su -c '
+  if systemctl list-unit-files | grep -q "zapret.service"; then
+    systemctl disable --now zapret.service
+    rm /etc/systemd/system/zapret.service
+    systemctl daemon-reload
+  fi
+  rm -rf /opt/zapret
+  if dpkg -l | grep -q "libnetfilter_queue"; then
+    apt-get remove -y libnetfilter_queue
+  fi
+'
+```
+То же самое в несколько команд:  
 
-Удаление systemd unit:  
-sudo rm /etc/systemd/system/zapret.service  
-
-Перезагрузка systemd:  
-sudo systemctl daemon-reload  
-
-Удаление файлов zapret:  
-sudo rm -rf /opt/zapret  
-
-Удаление зависимостей (опционально):  
-sudo apt-get remove libnetfilter_queue  
+Отключение автозагрузки:
+```bash
+sudo systemctl disable --now zapret.service
+```
+Удаление systemd unit:
+```bash
+sudo rm /etc/systemd/system/zapret.service
+```
+Перезагрузка systemd:
+```bash
+sudo systemctl daemon-reload
+```
+Удаление файлов zapret:
+```bash
+sudo rm -rf /opt/zapret
+```
+Удаление зависимостей (опционально):
+```bash
+sudo apt-get remove libnetfilter_queue
+```
 
 ## Проверка зависимостей
 
