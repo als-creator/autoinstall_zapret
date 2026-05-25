@@ -76,25 +76,29 @@ curl -fsSL https://raw.githubusercontent.com/als-creator/autoinstall_zapret/main
 
 Основной конфиг:  
   /opt/zapret/config  
-  Редактирование: sudo nano /opt/zapret/config  
-
+  Редактирование: 
+```bash
+  sudo nano /opt/zapret/config  
+```
   Основные параметры:  
   • MODE - режим работы (NFQUEUE, TPWS, TPWS+, FAKE, etc)  
   • TPWS_PORT - порт для TPWS  
   • IPSET - набор IP адресов для обработки  
 
 Список доменов для блокировки:  
-  /opt/zapret/ipset/zapret-hosts-user.txt  
-  Редактирование: sudo nano /opt/zapret/ipset/zapret-hosts-user.txt  
-
-  Формат: один домен на строку  
-  Пример:  
-    example.com  
-    blocked.site  
-    forbidden.net  
-
+/opt/zapret/ipset/zapret-hosts-user.txt  
+Редактирование: 
+```bash
+sudo nano /opt/zapret/ipset/zapret-hosts-user.txt  
+```
+Формат: один домен на строку  
+Пример:  
+  example.com  
+  blocked.site  
+  forbidden.net  
+```bash
 sudo systemctl restart zapret.service  
-
+```
 ## Удаление zapret
 
 Если zapret больше не требуется, выполните следующие команды:
@@ -131,14 +135,17 @@ sudo rm -rf /opt/zapret
 ## Проверка зависимостей
 
 Проверка наличия sudo:  
+```bash
 sudo -v  
-
+```
 Проверка наличия git:  
+```bash
 git --version  
-
+```
 Проверка наличия libnetfilter_queue:  
+```bash
 dpkg -l | grep libnetfilter  
-
+```
 ## Решение проблем
 
 Если сервис не запускается, проверьте логи:  
@@ -159,7 +166,7 @@ ls -la /opt/zapret/
 ```bash
 sudo /opt/zapret/install_easy.sh
 ```
-Если не помогло, до попробовать другое [правило](https://github.com/Snowy-Fluffy/zapret.cfgs/tree/main/configurations) для /opt/zapret/config
+Если не помогло, то попробовать другое [правило](https://github.com/Snowy-Fluffy/zapret.cfgs/tree/main/configurations) для /opt/zapret/config
 
 ## Лицензия
 
