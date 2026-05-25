@@ -22,7 +22,7 @@
 Запустите скрипт по ссылке:  
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/als-creator/autoinstall_zapret_altlinux/main/autoinstall_zapret.sh | sh
+curl -fsSL https://raw.githubusercontent.com/als-creator/autoinstall_zapret/main/autoinstall_zapret.sh | sh
 ```
 Скрипт попросит пароль для выполнения команд через sudo.  
 
