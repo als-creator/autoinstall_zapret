@@ -269,9 +269,6 @@ sudo systemctl daemon-reload
 Удаление файлов zapret:
 sudo rm -rf /opt/zapret
 
-Удаление зависимостей (опционально):
-sudo apt-get remove libnetfilter_queue
-
 ════════════════════════════════════════════════════════════════════
 
 EOF
