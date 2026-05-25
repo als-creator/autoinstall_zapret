@@ -1,10 +1,10 @@
-# AutoInstall Zapret для Alt Linux
+# AutoInstall Zapret 
 
 ## Описание
 
 Скрипт автоматизирует установку и настройку zapret  v72.12 от bol-van   
 Данный пакет по заявлению автора больше не будет обновляться, поэтому скрипт окончательный.  
-В целом, хотя и указано что скрипт для altlinux, но разница тут только с зависимостями, которые ставятся через пакетник, основа копируется с помощью git без пакетника, поэтому при установке зависимостей вручную скрипт можно использовать на любом дистре со стандартным расположением директорий.  
+Тестировалось на altlinux, но разница тут только с зависимостями, которые ставятся через пакетник, основа копируется с помощью git без пакетника, поэтому при установке зависимостей вручную скрипт можно использовать на любом дистре со стандартным расположением директорий.  
 
 ## Что делает скрипт
 
@@ -22,7 +22,7 @@
 Запустите скрипт по ссылке:  
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/als-creator/autoinstall_zapret_altlinux/main/autoinstall_zapret_altlinux.sh | sh
+curl -fsSL https://raw.githubusercontent.com/als-creator/autoinstall_zapret_altlinux/main/autoinstall_zapret.sh | sh
 ```
 Скрипт попросит пароль для выполнения команд через sudo.  
 
@@ -107,9 +107,6 @@ su -c '
     systemctl daemon-reload
   fi
   rm -rf /opt/zapret
-  if dpkg -l | grep -q "libnetfilter_queue"; then
-    apt-get remove -y libnetfilter_queue
-  fi
 '
 ```
 То же самое в несколько команд:  
@@ -129,10 +126,6 @@ sudo systemctl daemon-reload
 Удаление файлов zapret:
 ```bash
 sudo rm -rf /opt/zapret
-```
-Удаление зависимостей (опционально):
-```bash
-sudo apt-get remove libnetfilter_queue
 ```
 
 ## Проверка зависимостей
@@ -158,6 +151,10 @@ cat /opt/zapret/config
 
 Если доступа нет, проверьте права доступа:  
 ls -la /opt/zapret/  
+
+Если сервис работает, но ничего не воспроизводится, то можно прогнать вручную настройки:
+sudo /opt/zapret/install_easy.sh
+если не помогло, до попробовать другое [правило] (https://github.com/Snowy-Fluffy/zapret.cfgs/tree/main/configurations) для /opt/zapret/config
 
 ## Лицензия
 
