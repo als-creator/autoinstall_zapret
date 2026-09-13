@@ -131,12 +131,13 @@ log_ok "/opt/zapret скопирован"
 # ---------------------------------------------------------------------------
 log_ok "Определение архитектуры..."
 ARCH_RESULT=""
+# "my" — бинарники, собранные локально из исходников; остальные — предсобранные
 if cd /opt/zapret && ARCH_RESULT=$(bash install_bin.sh getarch 2>/dev/null); then
     log_ok "Архитектура: $ARCH_RESULT"
-    cd "$SCRIPT_DIR"
+elif [ -x /opt/zapret/binaries/my/nfqws ]; then
+    ARCH_RESULT="my"
+    log_ok "Архитектура: my (локальная сборка)"
 else
-    cd "$SCRIPT_DIR"
-    # Manual fallback mapping
     ARCH_RAW=$(uname -m)
     case "$ARCH_RAW" in
         x86_64)          ARCH_RESULT="linux-x86_64" ;;
@@ -147,26 +148,30 @@ else
     esac
     log_ok "Архитектура (по uname): $ARCH_RESULT (ручное определение)"
 fi
+cd "$SCRIPT_DIR"
 
-# Install binaries via install_bin.sh
-if sudo bash /opt/zapret/install_bin.sh 2>&1 | grep -qE "OK|linking|copying"; then
-    log_ok "Бинарники установлены (install_bin.sh)"
+# Link selected binaries (same relative symlinks as install_bin.sh's ccp)
+case "$ARCH_RESULT" in
+    my|linux-x86_64|linux-x86|linux-arm64|linux-arm) ;;
+    *) log_err "Неизвестная архитектура: $ARCH_RESULT" ;;
+esac
+if [ -x "/opt/zapret/binaries/$ARCH_RESULT/nfqws" ]; then
+    sudo ln -sf "../binaries/$ARCH_RESULT/nfqws"  /opt/zapret/nfq/nfqws
+    sudo ln -sf "../binaries/$ARCH_RESULT/tpws"   /opt/zapret/tpws/tpws
+    sudo ln -sf "../binaries/$ARCH_RESULT/ip2net" /opt/zapret/ip2net/ip2net
+    sudo ln -sf "../binaries/$ARCH_RESULT/mdig"   /opt/zapret/mdig/mdig
+    log_ok "Бинарники слинкованы: $ARCH_RESULT"
 else
-    log_warn "install_bin.sh не сработал автоматически, пробуем линковку вручную..."
-    case "$ARCH_RESULT" in
-        linux-x86_64|linux-x86|linux-arm64|linux-arm) ;;
-        *) log_err "Неизвестная архитектура: $ARCH_RESULT" ;;
-    esac
-    sudo bash -c "cd /opt/zapret && ln -sf ../binaries/$ARCH_RESULT/nfqws nfq/nfqws"
-    sudo bash -c "cd /opt/zapret && ln -sf ../binaries/$ARCH_RESULT/tpws tpws/tpws"
-    sudo bash -c "cd /opt/zapret && ln -sf ../binaries/$ARCH_RESULT/ip2net ip2net/ip2net"
-    sudo bash -c "cd /opt/zapret && ln -sf ../binaries/$ARCH_RESULT/mdig mdig/mdig"
-    log_ok "Бинарники слинкованы вручную"
+    log_err "Бинарник binaries/$ARCH_RESULT/nfqws не найден"
 fi
 
-# Verify binaries
-[ -x /opt/zapret/nfq/nfqws ] || log_err "nfqws не найден/не запускается"
-log_ok "nfqws: $(file /opt/zapret/nfq/nfqws | sed 's/.*: //')"
+# Verify binaries run (static, no libnetfilter_queue needed)
+[ -L /opt/zapret/nfq/nfqws ] && [ -x /opt/zapret/nfq/nfqws ] || log_err "nfqws не слинкован"
+if echo "1.2.3.4" | /opt/zapret/ip2net/ip2net >/dev/null 2>&1; then
+    log_ok "Статические бинарники работают (без libnetfilter_queue)"
+else
+    log_warn "ip2net не выполнился — архитектура может не подходить"
+fi
 
 sudo mkdir -p /opt/zapret/ipset /opt/zapret/files
 
@@ -365,18 +370,17 @@ fi
 verify_fw(){
     case "$FWTYPE_UNIVERSAL" in
         iptables)
-            if sudo iptables -t mangle -nL ZAPRET >/dev/null 2>&1; then
-                log_ok "Правила применены: цепочка ZAPRET в mangle присутствует"
+            if sudo iptables -t mangle -nL 2>/dev/null | grep -q NFQUEUE; then
+                log_ok "Правила применены: NFQUEUE в mangle присутствуют"
             else
-                log_warn "Цепочка ZAPRET не найдена. Проверьте: sudo iptables -t mangle -nL"
+                log_warn "Правила NFQUEUE не найдены. Проверьте: sudo iptables -t mangle -nL"
             fi
             ;;
         nftables)
-            if sudo nft list chain inet zapret post >/dev/null 2>&1 || \
-               sudo nft list tables 2>/dev/null | grep -q zapret; then
-                log_ok "Правила применены: таблица zapret в nftables присутствует"
+            if sudo nft list table inet zapret >/dev/null 2>&1; then
+                log_ok "Правила применены: таблица inet zapret в nftables присутствует"
             else
-                log_warn "Таблица zapret не найдена. Проверьте: sudo nft list tables"
+                log_warn "Таблица inet zapret не найдена. Проверьте: sudo nft list table inet zapret"
             fi
             ;;
     esac
