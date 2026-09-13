@@ -5,7 +5,7 @@
 Скрипт автоматизирует установку и настройку zapret v72.x  
 Данная ветка (v1) по заявлению автора больше не обновляется (EOL), поэтому
 скрипт **не клонирует** репозиторий bol-van, а берёт zapret из репозитория
-[als-creator/autoinstall_zapret_altlinux](https://github.com/als-creator/autoinstall_zapret_altlinux)
+[als-creator/autoinstall_zapret](https://github.com/als-creator/autoinstall_zapret)
 (локальная папка `zapret/` в проекте или fallback-клонирование).
 
 Бинарники nfqws/tpws/ip2net/mdig — **предсобранные и статически слинкованные**,

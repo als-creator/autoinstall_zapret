@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Universal installer for zapret v1 (EOL, bol-van/zapret)
-# Source: als-creator/autoinstall_zapret_altlinux (prebuilt static binaries)
+# Source: als-creator/autoinstall_zapret (prebuilt static binaries)
 # Install to /opt/zapret, auto-detect firewall type, write NFQWS rule + hostlists,
 # create systemd unit, verify.
 #
@@ -18,7 +18,7 @@ log_err(){ echo "[ERROR] $*"; exit 1; }
 command -v sudo >/dev/null 2>&1 || log_err "sudo не установлен"
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-REPO_URL="https://github.com/als-creator/autoinstall_zapret_altlinux.git"
+REPO_URL="https://github.com/als-creator/autoinstall_zapret.git"
 
 # ---------------------------------------------------------------------------
 # Package manager detection
@@ -389,7 +389,7 @@ cat <<'EOF'
                     КОНФИГУРАЦИЯ ZAPRET (v1)
 ════════════════════════════════════════════════════════════════════
 
-Источник: als-creator/autoinstall_zapret_altlinux
+Источник: als-creator/autoinstall_zapret
 Бинарники: предсобранные статические (работают на любом дистрибутиве)
 
 Основной конфиг:
