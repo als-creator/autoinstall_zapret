@@ -205,6 +205,37 @@ command -v iptables && command -v ipset
 command -v nft && command -v ipset
 ```
 
+## Минимальный набор доменов
+
+После установки скрипт печатает проверку минимума — rutor, rutracker,
+nnm-club, YouTube, Telegram:
+
+```
+  rutracker.org                  OK (301)
+  nnmclub.to                     OK (200)
+  www.youtube.com                OK (200)
+  i.ytimg.com                    OK (404)
+  yt3.googleusercontent.com      OK (400)
+  rutor.info                     FAIL (домен в списке, но не открывается — вероятна блокировка по IP)
+  telegram.org                   FAIL (домен в списке, но не открывается — вероятна блокировка по IP)
+```
+
+Проверить в любой момент:
+
+```bash
+for h in rutracker.org nnmclub.to www.youtube.com i.ytimg.com yt3.googleusercontent.com rutor.info telegram.org t.me web.telegram.org; do
+  printf '%-30s %s\n' "$h" "$(curl -k -sS -m 8 -o /dev/null -w '%{http_code}' https://$h/ 2>/dev/null)"
+done
+```
+
+Если домен открывается без zapret, но не с ним — допишите его в
+`/opt/zapret/ipset/zapret-hosts-user.txt`. Если не открывается вообще, то
+блокируют по IP (RST сразу после connect), и desync/SNI тут не поможет.
+
+Особенность zapret против byedpi: правило `--filter-udp=443 ... fake-quic`
+отвечает и за YouTube по QUIC. byedpi работает только с TCP, поэтому там
+браузер сам откатывается на HTTP/2 поверх TCP.
+
 ## Решение проблем
 
 Если сервис не запускается, проверьте логи:
