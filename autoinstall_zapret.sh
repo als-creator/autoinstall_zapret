@@ -10,6 +10,12 @@
 #
 set -uo pipefail
 
+# --keep-lists: не перезаписывать существующий список доменов
+KEEP_LISTS="no"
+for a in "$@"; do
+    [ "$a" = "--keep-lists" ] && KEEP_LISTS="yes"
+done
+
 log_ok(){ echo "[OK] $*"; }
 log_warn(){ echo "[WARN] $*"; }
 log_err(){ echo "[ERROR] $*"; exit 1; }
@@ -257,6 +263,14 @@ log_ok "Конфиг /opt/zapret/config записан (FWTYPE=$FWTYPE_UNIVERSAL
 # ---------------------------------------------------------------------------
 # Hostlists
 # ---------------------------------------------------------------------------
+if [ -f /opt/zapret/ipset/zapret-hosts-user.txt ] && [ "$KEEP_LISTS" != "yes" ]; then
+    sudo cp -p /opt/zapret/ipset/zapret-hosts-user.txt "/opt/zapret/ipset/zapret-hosts-user.txt.bak-$(date +%Y%m%d-%H%M%S)" 2>/dev/null \
+        || sudo cp /opt/zapret/ipset/zapret-hosts-user.txt "/opt/zapret/ipset/zapret-hosts-user.txt.bak-$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+    log_warn "Список доменов обновляется из скрипта, предыдущий сохранён в .bak-<дата>"
+elif [ -f /opt/zapret/ipset/zapret-hosts-user.txt ]; then
+    log_warn "Список уже есть и задан --keep-lists, не перезаписан: /opt/zapret/ipset/zapret-hosts-user.txt"
+fi
+
 sudo tee /opt/zapret/ipset/zapret-hosts-user.txt >/dev/null <<'EOF'
 # --- МИНИМУМ: rutor / rutracker / nnm-club / youtube ---
 # Rutor
