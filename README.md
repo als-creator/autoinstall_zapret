@@ -250,8 +250,8 @@ command -v nft && command -v ipset
 
 ## Минимальный набор доменов
 
-После установки скрипт печатает проверку минимума — rutor, rutracker,
-nnm-club, YouTube:
+После установки скрипт печатает проверку минимума — rutracker,
+nnm-club, YouTube, Discord:
 
 ```
   rutracker.org                  OK (301)
@@ -259,13 +259,13 @@ nnm-club, YouTube:
   www.youtube.com                OK (200)
   i.ytimg.com                    OK (404)
   yt3.googleusercontent.com      OK (400)
-  rutor.info                     FAIL (домен в списке, но не открывается)
+  discord.com                    OK (200)
 ```
 
 Проверить в любой момент:
 
 ```bash
-for h in rutracker.org nnmclub.to www.youtube.com i.ytimg.com yt3.googleusercontent.com rutor.info; do
+for h in rutracker.org nnmclub.to www.youtube.com i.ytimg.com yt3.googleusercontent.com discord.com; do
   printf '%-30s %s\n' "$h" "$(curl -k -sS -m 8 -o /dev/null -w '%{http_code}' https://$h/ 2>/dev/null)"
 done
 ```
@@ -273,10 +273,10 @@ done
 Если домен открывается без zapret, но не с ним — допишите его в
 `/opt/zapret/ipset/zapret-hosts-user.txt`.
 
-rutor.info фильтруется статистически: SYN-ACK проходит за 5 мс (блокировки по IP
-нет), а RST уходит на ClientHello примерно в 7 случаях из 8 — при любом правиле
-desync. Поэтому rutor открывается с первой-второй перезагрузки; в curl нужен
-`--retry`.
+Домен, который не открывается и при этом есть в `zapret-hosts-user.txt`,
+почти всегда заблокирован по IP (RST сразу после connect) — desync по SNI
+такие блокировки не снимает. Статистическая фильтрация выглядит иначе:
+SYN-ACK приходит, а RST — на ClientHello; тогда помогает `--retry`.
 
 Telegram в списках намеренно отсутствует: с 05.06.2026 он режет по JA3-отпечатку
 ClientHello, а не по SNI, поэтому desync его не берёт — нужен прокси или VPN.
